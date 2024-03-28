@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <menuitem id="budget_management_menu_root" name="Budget">
-        <menuitem id="budget_management_menu" name="Budgets" action="budget_management_action" sequence="10"/>
-        <menuitem id="budget_line_reporting_menu" name="Reporting" sequence="15">
-            <menuitem id="budget_line_management_menu" name="Budget Lines" action="budget_line_management_action"/>
+        <menuitem id="budget_management_menu" name="Budgets" sequence="10">
+            <menuitem id="budget_management_budget_menu" name="Budgets" action="budget_management_action" sequence="11"/>
+            <menuitem id="budget_management_wizard_form" name="Mass Budgets" action="budget_management_wizard_action" sequence="12"/>
         </menuitem>
     </menuitem>
 </odoo>
