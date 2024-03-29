@@ -13,7 +13,7 @@
                             <field name="date_to" class="oe_inline" />
                         </div>
                         <field name="periods"/>
-                        <field name="analytic_account_id" widget="many2many_tags"/>
+                        <field name="analytic_plan_id" widget="many2many_tags"/>
                     </group>
                     <footer>
                         <button name="action_create_budgets" string="Create" type="object" class="btn-primary" data-hotkey="q"/>

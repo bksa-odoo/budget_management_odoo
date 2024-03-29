@@ -10,7 +10,7 @@
         <field name="name">budget.budget.view.kanban</field>
         <field name="model">budget.budget</field>
         <field name="arch" type="xml">
-            <kanban records_draggable="0" action="action_open_budget_lines" type="object">
+            <kanban action="action_open_budget_lines" type="object" js_class="crm_kanban">
                 <field name="color"/>
                 <templates>
                     <t t-name="kanban-menu" groups="base.group_user">
@@ -33,7 +33,7 @@
                         </div>
                     </t>
                     <t t-name="kanban-box">
-                        <div t-att-class="'oe_kanban_global_click'">
+                        <div t-att-class="'oe_kanban_global_click'" t-attf-class="#{kanban_color(record.color.raw_value)}">
                             <div class="oe_kanban_details">
                                 <div class="oe_kanban_name">
                                     <field name="is_favorite" widget="boolean_favorite" nolabel="1" force_save="1"/>
@@ -75,8 +75,10 @@
                     <button name="action_budget_confirm" string="Confirm" type="object" invisible="state != 'draft'"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirm,revised,done"/>
                 </header>
-                <div class="alert alert-warning mb-0" role="alert" invisible="not is_above_budget">
-                    One of the Budget line has exceeded its budget amount
+                <div invisible="on_over_budget != 'warning'">
+                    <div class="alert alert-warning mb-0" invisible="not is_above_budget" role="alert" >
+                     One of the Budget line has exceeded its budget amount
+                    </div>
                 </div>
                 <sheet>
                     <label for="name" string="Budget Name"/>
@@ -102,6 +104,7 @@
                             <page string="Budget Lines">
                                 <field name="budget_line_ids" widget="one2many_list" readonly="state != 'draft'">
                                     <tree editable="top">
+                                        <!-- <field name="name"/> -->
                                         <field name="analytic_account_id"/>
                                         <field name="budget_amt"/>
                                         <field name="budget_achieved"/>
