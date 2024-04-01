@@ -4,21 +4,27 @@ from odoo.exceptions import UserError, ValidationError
 class BudgetBudget(models.Model):
     _name = 'budget.budget'
     _inherit = ['mail.thread','mail.activity.mixin']
+    _description = 'Budget'
     
-    name = fields.Char(string="Budget Name", readonly=True, compute="_compute_name",store=True, default=lambda self:('New'), copy=True)
-    date_from = fields.Date('from', required=True, copy=True)
-    date_to = fields.Date('to', required=True, copy=True)
-    responsible_id = fields.Many2one('res.users',string="Responsible", copy=True)
-    state = fields.Selection([('draft','Draft'),('confirm','Comfirmed'),('revised','Revised'),('done','Done')],
-         string='State',
-         default='draft', tracking=True)
+    name = fields.Char(string="Budget Name", readonly=True, compute="_compute_name",store=True, default=lambda self:('New'))
+    date_from = fields.Date('from', required=True)
+    date_to = fields.Date('to', required=True)
+    responsible_id = fields.Many2one('res.users',string="Responsible")
+    state = fields.Selection([('draft','Draft'),('confirm','Confirmed'),('revised','Revised'),('done','Done'),('cancel','Cancelled')],
+        string='State',
+        default='draft', tracking=True)
     is_favorite = fields.Boolean(string="Is Favorite")
     budget_line_ids = fields.One2many('budget.line','budget_id',copy=True)
     company_id = fields.Many2one('res.company', 'Company',default=lambda self: self.env.company)
     on_over_budget = fields.Selection([('none','None'),('warning','Warning on Budget'),('restrict','Restriction on creation')], string="On Over Budget",default='none')  
     revision_id = fields.Many2one('budget.budget', string='Revision Budget',tracking=True)
     color = fields.Integer('Color Index', default=0)
+    displayed_image_id = fields.Many2one('ir.attachment', domain="[('res_model', '=', 'project.task'), ('res_id', '=', id), ('mimetype', 'ilike', 'image')]", string='Cover Image')
     is_above_budget = fields.Boolean(related="budget_line_ids.is_above_budget") 
+    
+    _sql_constraints = [
+        ('unique_period_name', 'UNIQUE (date_from, date_to, name)', 'Period with same name and dates already exists!'),
+    ]
     
     @api.depends('date_from','date_to')
     def _compute_name(self):
@@ -27,22 +33,6 @@ class BudgetBudget(models.Model):
                 rec.name = f"Budget: {rec.date_from} to {rec.date_to}"
             else:
                 rec.name = 'New'    
-                
-    @api.constrains('name', 'date_from', 'date_to')
-    def _check_overlapping_budgets(self):
-        for budget in self:
-            overlapping_budgets = self.search([
-                ('id', '!=', budget.id),
-                ('name', '=', budget.name),
-                '|',
-                '&', ('date_from', '<=', budget.date_from), ('date_to', '>=', budget.date_from),
-                '&', ('date_from', '<=', budget.date_to), ('date_to', '>=', budget.date_to),
-                '|',
-                '&', ('date_from', '>=', budget.date_from), ('date_to', '<=', budget.date_to),
-                '&', ('date_from', '<=', budget.date_from), ('date_to', '>=', budget.date_to),
-            ])
-            if overlapping_budgets:
-                raise ValidationError('Budgets with overlapping dates and same name are not allowed.') 
             
     @api.constrains('on_over_budget')
     def _check_on_over_budget(self):
@@ -58,7 +48,7 @@ class BudgetBudget(models.Model):
     # actions
     def action_reset_to_draft(self):
         self.ensure_one()
-        self.write({'state': 'draft'})             
+        self.write({'state': 'draft'})          
     
     def action_budget_revise(self):    
         new_budget_lines = []  
@@ -68,7 +58,7 @@ class BudgetBudget(models.Model):
                     'budget_id': self.id,
                     'budget_amt': line.budget_amt + line.budget_achieved,
                     'budget_achieved': line.budget_achieved,
-                     'analytic_account_id': line.analytic_account_id.id,
+                    'analytic_account_id': line.analytic_account_id.id,
                 }
                 new_budget_lines.append((0, 0, revised_line_vals))
 
@@ -85,7 +75,10 @@ class BudgetBudget(models.Model):
         revised_budget.responsible_id = self.responsible_id
         self.revision_id = revised_budget.id
         self.write({'state': 'revised'})
-
+        message_body = """
+           A revisied budget is created corresponding to this budget, the revisied budget name is {0}
+            """.format(revised_budget.name)
+        self.message_post(body=message_body)    
 
         return {
             'name': 'Revised Budget',
@@ -103,7 +96,11 @@ class BudgetBudget(models.Model):
         
     def action_budget_confirm(self):
         self.ensure_one()
-        self.write({'state': 'confirm'})   
+        self.write({'state': 'confirm'})
+        
+    def action_budget_cancel(self):
+        self.ensure_one()
+        self.write({'state': 'cancel'})     
         
         
     def action_open_budget_lines(self):

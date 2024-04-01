@@ -7,14 +7,25 @@ class BudgetLine(models.Model):
     budget_id = fields.Many2one('budget.budget', string="Budget")
     currency_id = fields.Many2one('res.currency', string='Currency', default=lambda self: self.env.company.currency_id)
     budget_amt = fields.Monetary(string='Budget Amount')
-    budget_achieved = fields.Monetary(string="Achieved Amount", readonly=True, compute="_compute_achieved_amount", store=True)
+    budget_achieved = fields.Monetary(string="Achieved Amt", compute="_compute_achieved_amount")
+    budget_achieved_stored = fields.Monetary(string="Achieved Amt", related='budget_achieved', store=True)
     analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Accounts')
     analytic_plan_id = fields.Many2one('account.analytic.plan', 'Analytic Plan',related='analytic_account_id.plan_id', readonly=True)
+    line_ids = fields.One2many(
+        'account.analytic.line',
+        'auto_account_id', 
+        string="Analytic Lines",
+    )
     achieved_percentage = fields.Float(string="Achieved(%)", compute="_compute_achieved_percent")
     is_above_budget = fields.Boolean(compute='_is_above_budget')
     date_from = fields.Date(string="from", related="budget_id.date_from")
     date_to = fields.Date(string="to", related="budget_id.date_to")
     responsible_id = fields.Many2one(string="Responsible", related="budget_id.responsible_id")
+    
+    @api.depends('analytic_account_id')
+    def _compute_display_name(self):
+        for line in self:
+            line.display_name = line.analytic_account_id.name
     
     @api.depends('budget_amt','budget_achieved')
     def _compute_achieved_percent(self):
@@ -40,35 +51,26 @@ class BudgetLine(models.Model):
                                 ('date', '>=', self.budget_id.date_from),
                                 ('date', '<=', self.budget_id.date_to)
                                 ]
-            if self.general_budget_id:
-                action['domain'] += [('general_account_id', 'in', self.general_budget_id.account_ids.ids)]
         else:
             action = self.env['ir.actions.act_window']._for_xml_id('account.action_account_moves_all_a')
             action['domain'] = [('account_id', 'in',
-                                 self.general_budget_id.account_ids.ids),
+                                 self.analytic_account_id.ids),
                                 ('date', '>=', self.budget_id.date_from),
                                 ('date', '<=', self.budget_id.date_to)
                                 ]        
         return action                        
-     
-    def _compute_achieved_amount(self):
-        for budget in self:
-            achieved_amount = 0.0
-            for analytic_plan in budget.analytic_plan_id:
-                domain = [
-                    ('analytic_account_id', 'in', analytic_plan.account_ids.ids),
-                    ('amount', '<', 0.0),
-                ]
-                if budget.date_from:
-                    domain.append(('date', '>=', budget.date_from))
-                if budget.date_to:
-                    domain.append(('date', '<=', budget.date_to))
-                
-                analytic_lines = self.env['account.analytic.line'].search(domain)
-                for line in analytic_lines:
-                    achieved_amount += abs(line.amount) 
-            
-            budget.achieved_amount = achieved_amount
-            
     
-                
+    def _compute_achieved_amount(self):
+        for line in self:
+            analytic_lines = self.env['account.analytic.line'].search([
+            ('account_id', '=', line.analytic_account_id.id),
+            ('date', '>=', line.date_from),
+            ('date', '<=', line.date_to)
+            ])
+            
+            total_amount = 0
+            for analytic_line in analytic_lines:
+                if analytic_line.amount < 0:
+                    total_amount += (analytic_line.amount * (-1)) 
+            line.budget_achieved = total_amount  
+         

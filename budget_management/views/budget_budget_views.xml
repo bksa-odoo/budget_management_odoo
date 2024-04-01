@@ -10,7 +10,7 @@
         <field name="name">budget.budget.view.kanban</field>
         <field name="model">budget.budget</field>
         <field name="arch" type="xml">
-            <kanban action="action_open_budget_lines" type="object" js_class="crm_kanban">
+            <kanban action="action_open_budget_lines" type="object">
                 <field name="color"/>
                 <templates>
                     <t t-name="kanban-menu" groups="base.group_user">
@@ -20,9 +20,11 @@
                                     <h5 role="menuitem" class="o_kanban_card_manage_title">
                                         <span>View</span>
                                     </h5>
+                                    <a t-if="widget.editable" role="menuitem" type="set_cover" class="dropdown-item" data-field="displayed_image_id">Set Cover Image</a>
                                     <t t-if="widget.editable">
                                         <a role="menuitem" type="edit" class="dropdown-item">Configuration</a>
                                     </t>
+
                                 </div>
                             </div>
                             <div class="o_kanban_card_manage_settings row">
@@ -69,14 +71,15 @@
             <form>
                 <field name="is_above_budget" invisible="1"/>
                 <header>
-                    <button name="action_reset_to_draft" string="Reset to Draft" class="oe_highlight" type="object" invisible="state == 'draft'"/>
+                    <button name="action_reset_to_draft" string="Reset to Draft" class="oe_highlight" type="object" invisible="state in ['draft','cancel']"/>
                     <button name="action_budget_revise" string="Revise" type="object" invisible="state  in ['revised'] or not is_above_budget"/>
-                    <button name="action_budget_done" string="Done" type="object" invisible="state in ['done','draft']"/>
+                    <button name="action_budget_done" string="Done" type="object" invisible="state in ['done','draft','cancel']"/>
                     <button name="action_budget_confirm" string="Confirm" type="object" invisible="state != 'draft'"/>
+                    <button name="action_budget_cancel" string="Cancel" type="object" invisible="state in ['done','draft']"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,confirm,revised,done"/>
                 </header>
                 <div invisible="on_over_budget != 'warning'">
-                    <div class="alert alert-warning mb-0" invisible="not is_above_budget" role="alert" >
+                    <div class="alert alert-warning mb-0" invisible="not is_above_budget" role="alert">
                      One of the Budget line has exceeded its budget amount
                     </div>
                 </div>
@@ -104,7 +107,6 @@
                             <page string="Budget Lines">
                                 <field name="budget_line_ids" widget="one2many_list" readonly="state != 'draft'">
                                     <tree editable="top">
-                                        <!-- <field name="name"/> -->
                                         <field name="analytic_account_id"/>
                                         <field name="budget_amt"/>
                                         <field name="budget_achieved"/>

@@ -1,5 +1,6 @@
 from odoo import fields, models, api, exceptions, _
 from datetime import timedelta
+import calendar
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -45,6 +46,32 @@ class BatchBudgetWizard(models.TransientModel):
                     'budget_line_ids': [(6, 0, budget_lines)],
                 })
         return True
+    
+    @api.constrains('date_from', 'date_to')
+    def check_date_range(self):
+        for wizard in self:
+            if wizard.start_date and wizard.date_to:
+                date_from_str = wizard.date_from.strftime('%Y-%m-%d')
+                date_to_str = wizard.date_to.strftime('%Y-%m-%d')
+
+
+                start_year, start_month,  = date_from_str.split('-')
+                start_year = int(start_year)
+                start_month = int(start_month)
+
+
+                end_year, end_month,  = date_to_str.split('-')
+                end_year = int(end_year)
+                end_month = int(end_month)
+
+
+                if wizard.date_from.day != 1:
+                    raise ValidationError("Start date should be the first day of the month")
+
+
+                last_day_of_month = calendar.monthrange(end_year, end_month)[1]
+                if wizard.date_to.day != last_day_of_month:
+                    raise ValidationError("End date should be the last day of the month")
     
         
    
