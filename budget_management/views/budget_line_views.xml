@@ -45,10 +45,8 @@
         <field name="name">budget.line.view.gantt</field>
         <field name="model">budget.line</field>
         <field name="arch" type="xml">
-            <gantt date_start="date_from" date_stop="date_to" default_scale="year" default_group_by="budget_id" color="analytic_account_id"
-              thumbnails="{'responsible_id': 'avatar_128'}" 
-            >
-            <field name="responsible_id"/>
+            <gantt date_start="date_from" date_stop="date_to" default_scale="year" default_group_by="budget_id" color="analytic_account_id" thumbnails="{'responsible_id': 'avatar_128'}">
+                <field name="responsible_id"/>
             </gantt>
         </field>
     </record>

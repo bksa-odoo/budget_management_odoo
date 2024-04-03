@@ -45,25 +45,36 @@ class BudgetLine(models.Model):
                 
                 
     def action_open_budget_entries(self):
-        if self.analytic_account_id:
-            action = self.env['ir.actions.act_window']._for_xml_id('analytic.account_analytic_line_action_entries')
-            action['domain'] = [('account_id', '=', self.analytic_account_id.id),
-                                ('date', '>=', self.budget_id.date_from),
-                                ('date', '<=', self.budget_id.date_to)
-                                ]
-        else:
-            action = self.env['ir.actions.act_window']._for_xml_id('account.action_account_moves_all_a')
-            action['domain'] = [('account_id', 'in',
-                                 self.analytic_account_id.ids),
-                                ('date', '>=', self.budget_id.date_from),
-                                ('date', '<=', self.budget_id.date_to)
-                                ]        
-        return action                        
+        for line in self:
+            plan_id = line.analytic_account_id.plan_id.id
+            x_plan_id = f"x_plan{plan_id}_id"
+
+            if plan_id == 1:
+                x_plan_id = 'account_id'
+            if self.analytic_account_id:
+                action = self.env['ir.actions.act_window']._for_xml_id('analytic.account_analytic_line_action_entries')
+                action['domain'] = [(x_plan_id, '=', self.analytic_account_id.id),
+                                    ('date', '>=', self.budget_id.date_from),
+                                    ('date', '<=', self.budget_id.date_to)
+                                    ]
+            else:
+                action = self.env['ir.actions.act_window']._for_xml_id('account.action_account_moves_all_a')
+                action['domain'] = [(x_plan_id, 'in',
+                                    self.analytic_account_id.ids),
+                                    ('date', '>=', self.budget_id.date_from),
+                                    ('date', '<=', self.budget_id.date_to)
+                                    ]        
+            return action
     
     def _compute_achieved_amount(self):
         for line in self:
+            plan_id = line.analytic_account_id.plan_id.id
+            x_plan_id = f"x_plan{plan_id}_id"
+
+            if plan_id == 1:
+                x_plan_id = 'account_id'
             analytic_lines = self.env['account.analytic.line'].search([
-            ('account_id', '=', line.analytic_account_id.id),
+            (x_plan_id, '=', line.analytic_account_id.id),
             ('date', '>=', line.date_from),
             ('date', '<=', line.date_to)
             ])

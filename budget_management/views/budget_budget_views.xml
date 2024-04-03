@@ -72,7 +72,7 @@
                 <field name="is_above_budget" invisible="1"/>
                 <header>
                     <button name="action_reset_to_draft" string="Reset to Draft" class="oe_highlight" type="object" invisible="state in ['draft','cancel']"/>
-                    <button name="action_budget_revise" string="Revise" type="object" invisible="state  in ['revised'] or not is_above_budget"/>
+                    <button name="action_budget_revise" string="Revise" type="object" invisible="state in ['revised','draft'] or not is_above_budget"/>
                     <button name="action_budget_done" string="Done" type="object" invisible="state in ['done','draft','cancel']"/>
                     <button name="action_budget_confirm" string="Confirm" type="object" invisible="state != 'draft'"/>
                     <button name="action_budget_cancel" string="Cancel" type="object" invisible="state in ['done','draft']"/>

@@ -48,30 +48,15 @@ class BatchBudgetWizard(models.TransientModel):
         return True
     
     @api.constrains('date_from', 'date_to')
-    def check_date_range(self):
-        for wizard in self:
-            if wizard.start_date and wizard.date_to:
-                date_from_str = wizard.date_from.strftime('%Y-%m-%d')
-                date_to_str = wizard.date_to.strftime('%Y-%m-%d')
-
-
-                start_year, start_month,  = date_from_str.split('-')
-                start_year = int(start_year)
-                start_month = int(start_month)
-
-
-                end_year, end_month,  = date_to_str.split('-')
-                end_year = int(end_year)
-                end_month = int(end_month)
-
-
-                if wizard.date_from.day != 1:
-                    raise ValidationError("Start date should be the first day of the month")
-
-
-                last_day_of_month = calendar.monthrange(end_year, end_month)[1]
-                if wizard.date_to.day != last_day_of_month:
-                    raise ValidationError("End date should be the last day of the month")
+    def _check_date_range(self):
+        for record in self:
+            if record.date_from and record.date_to:
+                if record.date_from.day != 1:
+                    raise ValidationError("The start date for a budget should be the first day of the month.")
+                
+                last_day_of_month = calendar.monthrange(record.date_to.year, record.date_to.month)[1]
+                if record.date_to.day != last_day_of_month:
+                    raise ValidationError("The end date for a budget should be the last day of the month.")
     
         
    

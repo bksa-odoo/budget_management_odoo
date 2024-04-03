@@ -14,25 +14,35 @@ class BudgetBudget(models.Model):
         string='State',
         default='draft', tracking=True)
     is_favorite = fields.Boolean(string="Is Favorite")
-    budget_line_ids = fields.One2many('budget.line','budget_id',copy=True)
+    is_revised = fields.Boolean(string="Is revised")
+    budget_line_ids = fields.One2many('budget.line','budget_id')
     company_id = fields.Many2one('res.company', 'Company',default=lambda self: self.env.company)
     on_over_budget = fields.Selection([('none','None'),('warning','Warning on Budget'),('restrict','Restriction on creation')], string="On Over Budget",default='none')  
     revision_id = fields.Many2one('budget.budget', string='Revision Budget',tracking=True)
     color = fields.Integer('Color Index', default=0)
-    displayed_image_id = fields.Many2one('ir.attachment', domain="[('res_model', '=', 'project.task'), ('res_id', '=', id), ('mimetype', 'ilike', 'image')]", string='Cover Image')
     is_above_budget = fields.Boolean(related="budget_line_ids.is_above_budget") 
     
-    _sql_constraints = [
-        ('unique_period_name', 'UNIQUE (date_from, date_to, name)', 'Period with same name and dates already exists!'),
-    ]
+    @api.constrains('date_from', 'date_to')
+    def _check_overlapping_dates(self):
+        for budget in self:
+            if not budget.is_revised:
+                overlapping_budgets = self.search([
+                    ('id', '!=', budget.id),
+                    ('date_from', '<=', budget.date_to),
+                    ('date_to', '>=', budget.date_from),
+                ])
+                print(overlapping_budgets)
+                if overlapping_budgets:
+                    raise ValidationError('Budgets with overlapping dates are not allowed.')  
     
     @api.depends('date_from','date_to')
     def _compute_name(self):
         for rec in self:
-            if rec.date_from and rec.date_to:
-                rec.name = f"Budget: {rec.date_from} to {rec.date_to}"
-            else:
-                rec.name = 'New'    
+            if not rec.is_revised:
+                if rec.date_from and rec.date_to:
+                    rec.name = f"Budget: {rec.date_from} to {rec.date_to}"
+                else:
+                    rec.name = 'New'    
             
     @api.constrains('on_over_budget')
     def _check_on_over_budget(self):
@@ -65,13 +75,14 @@ class BudgetBudget(models.Model):
         date_str = self.date_from.strftime('%b %Y')
         new_budget_name = f"{self.name} Revised {date_str}"
         revised_budget_vals = {
+            'name' : f"{self.name} Revised {date_str}",
             'state': 'draft', 
             'date_from': self.date_from,
             'date_to': self.date_to,
             'budget_line_ids': new_budget_lines,
+            'is_revised': True,
         }
         revised_budget = self.env['budget.budget'].create(revised_budget_vals)
-        revised_budget.name = new_budget_name
         revised_budget.responsible_id = self.responsible_id
         self.revision_id = revised_budget.id
         self.write({'state': 'revised'})
